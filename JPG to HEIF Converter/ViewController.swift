@@ -129,7 +129,9 @@ extension ViewController {
 			let group = DispatchGroup()
 			
 			let serialQueue = DispatchQueue(label: "me.spaceinbox.jpgtoheifconverter")
-			
+
+         let fileManager = FileManager()
+
 			for imageUrl in panel.urls {
 				group.enter()
 				
@@ -141,7 +143,20 @@ extension ViewController {
 					guard let source = CGImageSourceCreateWithURL(imageUrl as CFURL, nil) else { return }
 					guard let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return }
 					guard let imageMetadata = CGImageSourceCopyMetadataAtIndex(source, 0, nil) else { return }
-					
+
+               // Get the file attributes of the source image
+               guard let sourceAttrs = try? fileManager.attributesOfItem(atPath: imageUrl.path) else { return }
+
+               // Save only the attributes we want to keep
+               var destAttrs = [FileAttributeKey : Any]()
+               let keysToKeep = [FileAttributeKey.creationDate, FileAttributeKey.modificationDate]
+               for key in keysToKeep
+               {
+                  if let value = sourceAttrs[key] {
+                     destAttrs[key] = value
+                  }
+               }
+
 					let pathWithName = imageUrl.deletingPathExtension()
 					guard let outputUrl = URL(string: pathWithName.absoluteString + ".heic") else { return }
 					
@@ -155,6 +170,16 @@ extension ViewController {
 					
 					CGImageDestinationAddImageAndMetadata(destination, image, imageMetadata, nil)
 					CGImageDestinationFinalize(destination)
+               // Set the attributes from the old file to the new one
+               do {
+                  try fileManager.setAttributes(destAttrs, ofItemAtPath: outputUrl.path)
+               }
+               catch
+               {
+                  // If the attributes didn't set properly then remove the image with the wrong attributes
+                  //                  try? fileManager.removeItem(at: outputUrl)
+                  fatalError("Set attrs error")
+               }
 					
 					DispatchQueue.main.async {
 						self.processedImages += 1
