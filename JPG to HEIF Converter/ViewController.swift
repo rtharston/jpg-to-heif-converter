@@ -157,8 +157,30 @@ extension ViewController {
                   }
                }
 
-					let pathWithName = imageUrl.deletingPathExtension()
-					guard let outputUrl = URL(string: pathWithName.absoluteString + ".heic") else { return }
+//               let pathWithName = imageUrl.deletingPathExtension()
+               let pictureName = imageUrl.deletingPathExtension().lastPathComponent
+               let outputFolderPath = imageUrl.deletingLastPathComponent().absoluteString + "HEICs/"
+               let isDirectory = UnsafeMutablePointer<ObjCBool>.allocate(capacity: 1)
+               let pathExists = fileManager.fileExists(atPath: outputFolderPath, isDirectory: isDirectory)
+
+               if (!pathExists) {
+                  do {
+                  try fileManager.createDirectory(atPath: outputFolderPath, withIntermediateDirectories: true, attributes: nil)
+                  }
+                  catch {
+                     fatalError("unable to create output directory")
+                  }
+               }
+               else if (!isDirectory.pointee.boolValue) {
+                  fatalError("output path is not to a directory")
+               }
+
+
+               if (!fileManager.fileExists(atPath: outputFolderPath, isDirectory: isDirectory)) {
+                  fatalError("output path doesn't exist")
+               }
+
+					guard let outputUrl = URL(string: outputFolderPath + pictureName + ".HEIC") else { return }
 					
 					guard let destination = CGImageDestinationCreateWithURL(
 						outputUrl as CFURL,
